@@ -543,8 +543,16 @@ write_file(_, _) ->
 %% Returns {error, Reason} | {ok, BytesCopied}
 sendfile(#file_descriptor{module = ?MODULE, data = {Port, _}},
 	 DestFD, Offset, Bytes) ->
-    drv_command(Port, <<?FILE_SENDFILE, DestFD:32,
-			Offset:64, Bytes:64>>).
+    ok = drv_command(Port, <<?FILE_SENDFILE, DestFD:32, Offset:64, Bytes:64>>),
+    Self = self(),
+    %% Do we need to use a ref()?
+    Res = receive
+	      {efile_reply, Self, Port, {ok, _Written}=OKRes}->
+		  OKRes;
+	      Error ->
+		  Error
+	  end,
+    Res.
 
 %%%-----------------------------------------------------------------
 %%% Functions operating on files without handle to the file. ?DRV.
